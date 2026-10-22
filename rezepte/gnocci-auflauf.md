@@ -11,7 +11,7 @@ description: "Kein Bock auf Kochen? Dann mach dies!"
 - 150 ml Wasser
 - 15 g Olivenöl
 - 1 EL Tomatenmark
-- Salz, Pfeffer, Knoblauchpulver, Basilikum, Petersilie, Chilli-Flocken, Spetseriko 
+- Salz, Pfeffer, Paprika (edelsüß), Basilikum, Petersilie, Chili-Flocken, Spetseriko, Knoblauchpulver
 - 500 g Gnocci
 - 1 Packung Feta
 
