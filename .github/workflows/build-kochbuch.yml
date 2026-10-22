@@ -1,0 +1,87 @@
+name: Kochbuch bauen und veröffentlichen
+
+# Baut bei jedem Push auf main das PDF und veröffentlicht es auf GitHub Pages.
+# Das Skript sucht sich das Projekt selbst, egal ob das Repo-Root direkt das
+# Projektverzeichnis ist oder eine Ebene darüber (z. B. Standardprojekt/).
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Repository auschecken
+        uses: actions/checkout@v4
+
+      - name: PDF bauen (Python + vollständiges TeX Live)
+        uses: xu-cheng/texlive-action@v3
+        with:
+          run: |
+            apk add --no-cache python3
+            SCRIPT="$(find . -type f -path '*/scripts/kochbuch_builder.py' | head -n 1)"
+            test -n "$SCRIPT" || { echo "kochbuch_builder.py nicht gefunden"; exit 1; }
+            echo "Baue mit $SCRIPT"
+            python3 "$SCRIPT"
+
+      - name: Website für GitHub Pages vorbereiten
+        run: |
+          PDF="$(find . -type f -path '*/build/kochbuch.pdf' | head -n 1)"
+          test -n "$PDF" || { echo "kochbuch.pdf nicht gefunden"; exit 1; }
+          mkdir -p _site
+          cp "$PDF" _site/kochbuch.pdf
+          cat > _site/index.html <<'HTML'
+          <!doctype html>
+          <html lang="de">
+          <head>
+          <meta charset="utf-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1">
+          <title>Kochbuch</title>
+          <style>
+            html, body { margin: 0; height: 100%; }
+            header { padding: .6rem 1rem; font-family: system-ui, sans-serif; }
+            iframe { border: 0; width: 100%; height: calc(100% - 2.6rem); }
+          </style>
+          </head>
+          <body>
+          <header><a href="kochbuch.pdf">Kochbuch als PDF herunterladen</a></header>
+          <iframe src="kochbuch.pdf" title="Kochbuch"></iframe>
+          </body>
+          </html>
+          HTML
+
+      - name: PDF als Workflow-Artefakt speichern
+        uses: actions/upload-artifact@v4
+        with:
+          name: kochbuch-pdf
+          path: _site/kochbuch.pdf
+
+      - name: GitHub Pages konfigurieren
+        uses: actions/configure-pages@v5
+
+      - name: Pages-Artefakt hochladen
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Auf GitHub Pages veröffentlichen
+        id: deployment
+        uses: actions/deploy-pages@v4
