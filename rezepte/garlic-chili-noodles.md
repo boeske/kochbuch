@@ -27,7 +27,7 @@ description: "Lecker lecker."
 
 2. Gochujang, Sojasoße, Essig, Zucker, Sesam verrühren.
 
-3. Öl in einer Pfanne erhitzen und Knoblauch, Ingwer und Lauchzwiebeln (einen Teil beiseite wtellen) so lange anbraten bis es gut riecht!
+3. Öl in einer Pfanne erhitzen und Knoblauch, Ingwer und Lauchzwiebeln (einen Teil beiseite stellen) so lange anbraten bis es gut riecht!
 
 4. Hack dazu, bisschen Salzen, und dann braun braten.
 
