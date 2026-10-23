@@ -1,7 +1,13 @@
 # Reihenfolge des Kochbuchs
 
-<!-- Dateinamen aus rezepte/ ohne .md; eine Zeile pro Rezept. -->
-1. template
-2. fischli-nudeln
-3. gnocci-auflauf
-4. thunfisch-zucchini-nudeln
+<!-- Kapitel beginnen mit "## Kapitelname". Rezepte darunter als Liste. -->
+<!-- Rezepte, die hier fehlen, landen automatisch im letzten Kapitel "Unsortiert". -->
+
+## Nudelgerichte
+
+1. fischli-nudeln
+2. thunfisch-zucchini-nudeln
+
+## Ofengerichte
+
+1. gnocci-auflauf

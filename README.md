@@ -8,18 +8,24 @@
 - `scripts/kochbuch_builder.py`: Erzeugt einzelne `.tex`-Dateien und das Gesamtkochbuch.
 - `build/`: Generierte Dateien und PDF.
 
-## Reihenfolge festlegen
+## Kapitel und Reihenfolge festlegen
 
-In `config/reihenfolge.md` stehen die Dateinamen aus `rezepte/` ohne `.md`, jeweils eine Zeile. Nummerierte Listen oder einfache Listen funktionieren:
+In `config/reihenfolge.md` stehen die Dateinamen aus `rezepte/` ohne `.md`. Kapitel beginnen mit einer Überschrift der zweiten Ebene (`##`); darunter stehen die Rezepte als nummerierte oder einfache Liste:
 
 ```markdown
 # Reihenfolge des Kochbuchs
 
+## Nudelgerichte
+
 1. fischli-nudeln
-2. fischli-nudeln2
+2. thunfisch-zucchini-nudeln
+
+## Ofengerichte
+
+1. gnocci-auflauf
 ```
 
-Alle Rezeptdateien müssen genau einmal in dieser Datei stehen. Das Skript meldet fehlende oder doppelte Einträge.
+Jedes Kapitel erscheint als eigene Kapitelseite und als Eintrag im Inhaltsverzeichnis; die Rezepte sind darunter eingerückt. Rezepte, die in `reihenfolge.md` fehlen, aber in `rezepte/` liegen, werden automatisch im letzten Kapitel **Unsortiert** ausgegeben. Doppelte oder unbekannte Rezeptnamen meldet das Skript als Fehler. Die `# ...`-Überschrift am Dateianfang ist nur der Titel der Datei und kein Kapitel.
 
 ## Bauen
 

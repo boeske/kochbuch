@@ -55,7 +55,7 @@ def tex_escape(s):
 def cmd(name, value):
     return f"\\{name}{{{tex_escape(value or '')}}}"
 
-def recipe_body(path, meta, sections, toc=False, first=False):
+def recipe_body(path, meta, sections, toc=False):
     # The class uses self-redefining commands for recipe metadata. Group each recipe
     # so those definitions are local and do not leak into the next recipe.
     lines = [r"\begingroup"]
@@ -67,12 +67,10 @@ def recipe_body(path, meta, sections, toc=False, first=False):
     # Page break first: the TOC entry and the hyperref anchor must belong to the
     # new recipe page. Otherwise both point at the end of the previous recipe.
     lines.append(r"\clearpage")
-    if first:
-        # Front matter (title page + TOC) stays unnumbered; recipes start at 1.
-        lines += [r"\pagenumbering{arabic}", r"\pagestyle{plain}"]
     if toc:
+        # Recipes are listed below their chapter in the table of contents.
         lines += [r"\phantomsection",
-                  r"\addcontentsline{toc}{section}{" + tex_escape(meta["title"]) + "}"]
+                  r"\addcontentsline{toc}{subsection}{" + tex_escape(meta["title"]) + "}"]
     lines += [r"\outputrecipeheader", r"\outputrecipedescription", r"\seprule",
               r"\vspace*{0.015\textheight}", r"\columnratio{0.4, 0.6}", r"\begin{paracol}{2}",
               r"\begin{recipeingredients}"]
@@ -81,6 +79,22 @@ def recipe_body(path, meta, sections, toc=False, first=False):
     lines += [r"\method{" + tex_escape(x) + "}" for x in sections["Zubereitung"]]
     lines += [r"\end{recipemethods}", r"\end{paracol}", r"\vspace*{0.006\textheight}", r"\seprule"]
     lines.append(r"\endgroup")
+    return "\n".join(lines)
+
+def chapter_page(title, first=False):
+    """Output a chapter divider page. Recipes of the chapter start on the next page."""
+    lines = [r"\clearpage"]
+    if first:
+        # Front matter (title page + TOC) stays unnumbered; the book starts at 1.
+        lines += [r"\pagenumbering{arabic}", r"\pagestyle{plain}"]
+    lines += [r"\phantomsection",
+              r"\addcontentsline{toc}{section}{" + tex_escape(title) + "}",
+              r"\begin{center}",
+              r"\vspace*{0.2\textheight}",
+              r"{\fontsize{34pt}{34pt}\selectfont\latoblack{" + tex_escape(title) + r"}\par}",
+              r"\vspace*{0.02\textheight}",
+              r"{\color{myred}\rule{0.45\textwidth}{0.5pt}}",
+              r"\end{center}"]
     return "\n".join(lines)
 
 def preamble():
@@ -93,31 +107,61 @@ def preamble():
 """
 
 def read_order(available_files):
-    """Read recipe stems from config/reihenfolge.md in the listed order."""
+    """Read chapters and recipe stems from config/reihenfolge.md.
+
+    Chapters are introduced by '## Kapitelname'. Recipes without a chapter entry
+    are collected in a final chapter named 'Unsortiert'.
+    """
     if not ORDER_FILE.exists():
         raise SystemExit(f"Reihenfolge-Datei fehlt: {ORDER_FILE}")
     available = {path.stem: path for path in available_files}
-    names = []
+    chapters = []  # [ [chapter_name, [recipe_stem, ...]], ... ]
+    current = None
+    seen = set()
     for line in ORDER_FILE.read_text(encoding="utf-8").splitlines():
         line = line.strip()
-        if not line or line.startswith("#") or line.startswith("<!--"):
+        if not line or line.startswith("<!--"):
+            continue
+        if line.startswith("## "):
+            name = line[3:].strip()
+            if not name:
+                raise SystemExit("Kapitelüberschrift ohne Namen in reihenfolge.md.")
+            current = [name, []]
+            chapters.append(current)
+            continue
+        if line.startswith("#"):
+            # '# ...' ist die Überschrift der Datei, kein Kapitel.
             continue
         line = re.sub(r"^[-*]\s+", "", line)
         line = re.sub(r"^\d+[.)]\s+", "", line).strip()
         if not line:
             continue
         name = Path(line).stem
-        if name in names:
+        if name in seen:
             raise SystemExit(f"Rezept doppelt in reihenfolge.md: {name}")
         if name not in available:
             raise SystemExit(f"Rezept '{name}' aus reihenfolge.md nicht gefunden in rezepte/.")
-        names.append(name)
-    if not names:
+        seen.add(name)
+        if current is None:
+            current = ["Ohne Kapitel", []]
+            chapters.append(current)
+        current[1].append(name)
+
+    missing = sorted(set(available) - seen)
+    result = []
+    unsorted = []
+    for name, stems in chapters:
+        if name.casefold() == "unsortiert":
+            unsorted.extend(stems)
+        elif stems:
+            result.append((name, [available[stem] for stem in stems]))
+    # Everything not listed in reihenfolge.md goes into the final chapter.
+    unsorted.extend(missing)
+    if unsorted:
+        result.append(("Unsortiert", [available[stem] for stem in unsorted]))
+    if not result:
         raise SystemExit(f"Keine Rezepte in {ORDER_FILE} eingetragen.")
-    missing = sorted(set(available) - set(names))
-    if missing:
-        raise SystemExit("Diese Rezeptdateien fehlen in reihenfolge.md: " + ", ".join(missing))
-    return [available[name] for name in names]
+    return result
 
 def main():
     BUILD.mkdir(exist_ok=True)
@@ -125,17 +169,23 @@ def main():
     discovered = sorted(RECIPES.glob("*.md"))
     if not discovered:
         raise SystemExit("Keine Rezept-Markdown-Dateien in rezepte/ gefunden.")
-    files = read_order(discovered)
-    parsed = []
-    for path in files:
-        meta, sections = read_recipe(path)
-        parsed.append((path, meta, sections))
-        individual = preamble() + recipe_body(path, meta, sections) + "\n\\end{document}\n"
-        (OUT_RECIPES / f"{path.stem}.tex").write_text(individual, encoding="utf-8")
+    chapters = read_order(discovered)
+    parsed = {}
+    for _chapter, paths in chapters:
+        for path in paths:
+            meta, sections = read_recipe(path)
+            parsed[path] = (meta, sections)
+            individual = preamble() + recipe_body(path, meta, sections) + "\n\\end{document}\n"
+            (OUT_RECIPES / f"{path.stem}.tex").write_text(individual, encoding="utf-8")
     master = [preamble(), r"\pagestyle{empty}",
               r"\begin{center}{\Huge\bfseries Kochbuch}\end{center}", r"\tableofcontents"]
-    for index, (path, meta, sections) in enumerate(parsed):
-        master.append(recipe_body(path, meta, sections, toc=True, first=index == 0))
+    first = True
+    for chapter, paths in chapters:
+        master.append(chapter_page(chapter, first=first))
+        first = False
+        for path in paths:
+            meta, sections = parsed[path]
+            master.append(recipe_body(path, meta, sections, toc=True))
     master.append(r"\end{document}")
     master_tex = BUILD / "kochbuch.tex"
     master_tex.write_text("\n\n".join(master) + "\n", encoding="utf-8")
