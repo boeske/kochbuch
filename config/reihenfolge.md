@@ -7,6 +7,7 @@
 
 1. fischli-nudeln
 2. thunfisch-zucchini-nudeln
+3. garlic-chili-noodles
 
 ## Ofengerichte
 
