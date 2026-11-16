@@ -8,6 +8,7 @@
 1. fischli-nudeln
 2. thunfisch-zucchini-nudeln
 3. garlic-chili-noodles
+4. kritharaki-meatballs
 
 ## Ofengerichte
 
